@@ -63,7 +63,7 @@ const HostSetup: React.FC<Props> = ({ onCreate }) => {
           <span className="mr-2"><Icons.Coffee /></span> 1. 飲料店家設定
         </h3>
         <input
-          placeholder="飲料店名稱 (例如：50嵐)"
+          placeholder="飲料店名稱"
           value={drinkShopName}
           onChange={e => setDrinkShopName(e.target.value)}
           className="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-blue-500"
@@ -88,7 +88,7 @@ const HostSetup: React.FC<Props> = ({ onCreate }) => {
           <span className="mr-2"><Icons.Check /></span> 2. 點心店家設定
         </h3>
         <input
-          placeholder="點心店名稱 (例如：好丘貝果)"
+          placeholder="點心店名稱"
           value={snackShopName}
           onChange={e => setSnackShopName(e.target.value)}
           className="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-pink-500"
@@ -113,7 +113,7 @@ const HostSetup: React.FC<Props> = ({ onCreate }) => {
           <span className="mr-2"><Icons.Users /></span> 3. 參與成員 (用逗號或換行分隔)
         </h3>
         <textarea
-          placeholder="小明, 小華, 小美..."
+          placeholder="部門成員"
           value={members}
           onChange={e => setMembers(e.target.value)}
           className="w-full p-3 border rounded-xl h-24 outline-none focus:ring-2 focus:ring-orange-500"
@@ -124,7 +124,7 @@ const HostSetup: React.FC<Props> = ({ onCreate }) => {
         type="submit"
         className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 shadow-lg shadow-orange-200"
       >
-        發起本週分類團購
+        建立本週團購
       </button>
     </form>
   );
