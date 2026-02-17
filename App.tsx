@@ -15,35 +15,35 @@ const App: React.FC = () => {
   });
   const [orders, setOrders] = useState<OrderDetail[]>([]);
 
-  // 1. 自動偵測網址參數與載入雲端菜單
+  // 1. 初始化：檢查網址參數並載入雲端菜單
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'participant') setRole(Role.PARTICIPANT);
+    if (params.get('mode') === 'participant') {
+      setRole(Role.PARTICIPANT);
+    }
 
-    const loadActiveSession = async () => {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data) {
-        setConfig({
-          drinkShopName: data.shop_name,
-          drinkItems: data.menu_data,
-          snackShopName: '', // 暫時合併處理
-          snackItems: [],
-          departmentMembers: [],
-          isActive: true,
-        });
-      }
+    const loadMenu = async () => {
+      try {
+        const { data } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        if (data) {
+          setConfig({
+            drinkShopName: data.shop_name,
+            drinkItems: data.menu_data || [],
+            snackShopName: '', snackItems: [],
+            departmentMembers: [], isActive: true,
+          });
+        }
+      } catch (e) { console.error("載入菜單失敗", e); }
     };
-    loadActiveSession();
+    loadMenu();
   }, []);
 
-  // 2. 抓取訂單資料
+  // 2. 載入訂單
   useEffect(() => {
     const fetchOrders = async () => {
       const { data } = await supabase.from('orders').select('*');
@@ -58,24 +58,19 @@ const App: React.FC = () => {
     fetchOrders();
   }, []);
 
-  // 3. 團購主點擊「開始團購」的處理邏輯
+  // 3. 處理開始團購
   const handleStartSession = async (newConfig: any) => {
-    try {
-      const { error } = await supabase
-        .from('sessions')
-        .insert([{
-          shop_name: newConfig.drinkShopName,
-          menu_data: newConfig.drinkItems,
-          is_active: true
-        }]);
+    const { error } = await supabase.from('sessions').insert([{
+      shop_name: newConfig.drinkShopName,
+      menu_data: newConfig.drinkItems,
+      is_active: true
+    }]);
 
-      if (error) throw error;
-
+    if (error) {
+      alert("開團失敗：" + error.message);
+    } else {
       setConfig({ ...newConfig, isActive: true });
-      alert('雲端開團成功！同事現在可以看到菜單了。');
-    } catch (err: any) {
-      console.error(err);
-      alert('開團失敗，請檢查 Supabase 欄位是否正確：' + err.message);
+      alert("開團成功！");
     }
   };
 
@@ -86,7 +81,7 @@ const App: React.FC = () => {
       price: newOrder.price,
       notes: newOrder.notes,
     }]);
-    if (error) alert('送出失敗'); else alert('點餐成功！');
+    if (error) alert('點餐失敗'); else alert('點餐成功！');
   };
 
   const isLocked = new URLSearchParams(window.location.search).get('mode') === 'participant';
@@ -97,9 +92,9 @@ const App: React.FC = () => {
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">下午茶團購統計器</h1>
           {!isLocked && (
-            <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="border p-2 rounded shadow-sm">
-              <option value={Role.HOST}>團購主 (Host)</option>
-              <option value={Role.PARTICIPANT}>參加者 (Participant)</option>
+            <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="border p-2 rounded">
+              <option value={Role.HOST}>團購主</option>
+              <option value={Role.PARTICIPANT}>參加者</option>
             </select>
           )}
         </header>
