@@ -21,165 +21,102 @@ const App: React.FC = () => {
     if (window.confirm("確定要重整頁面嗎？")) window.location.reload();
   };
 
-  // 1. 初始化：載入進行中的團購資料
+  // 1. 載入團購設定
   useEffect(() => {
     if (isParticipantLink) setRole(Role.PARTICIPANT);
-
     const loadActiveSession = async () => {
       try {
-        const { data, error } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('is_active', true)
-          .order('id', { ascending: false })
-          .maybeSingle();
-
-        if (error) throw error;
-
+        const { data } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle();
         if (data) {
           setConfig({
-            drinkShopName: data.shop_name || '未命名店家',
+            drinkShopName: data.shop_name,
             drinkItems: data.menu_data || [],
-            snackShopName: '', 
-            snackItems: [], 
-            departmentMembers: data.members || [], 
+            // 💡 修正：為了讓參加者模式能顯示，這裡同步放入點心項
+            snackShopName: data.shop_name, 
+            snackItems: data.menu_data || [], 
+            departmentMembers: data.members || [],
             isActive: true,
           });
         }
-      } catch (err) {
-        console.error("載入失敗:", err);
-      }
+      } catch (err) { console.error(err); }
     };
     loadActiveSession();
   }, [isParticipantLink]);
 
-  // 2. 載入訂單
+  // 2. 載入訂單統計
   useEffect(() => {
     const fetchOrders = async () => {
       const { data } = await supabase.from('orders').select('*');
       if (data) {
         setOrders(data.map((o: any) => ({
-          ...o,
+          userName: o.member_name, // 💡 對齊後台統計用的 Key
           memberName: o.member_name,
-          itemName: o.item_name
+          itemName: o.item_name,
+          price: o.price,
+          notes: o.notes
         })));
       }
     };
     fetchOrders();
   }, []);
 
-  // 3. 處理團購主發起團購
   const handleStartSession = async (newConfig: SessionConfig) => {
     try {
-      const { error } = await supabase
-        .from('sessions')
-        .insert([{
-          shop_name: newConfig.drinkShopName,
-          menu_data: newConfig.drinkItems,
-          members: newConfig.departmentMembers,
-          is_active: true
-        }]);
-
+      const { error } = await supabase.from('sessions').insert([{
+        shop_name: newConfig.drinkShopName,
+        menu_data: newConfig.drinkItems,
+        members: newConfig.departmentMembers,
+        is_active: true
+      }]);
       if (error) throw error;
       setConfig({ ...newConfig, isActive: true });
       alert('雲端開團成功！');
-    } catch (err: any) {
-      alert('開團失敗：' + err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
-  // 4. 處理結束團購
   const handleEndSession = async () => {
-    if (!window.confirm("確定要結束本次團購嗎？這會清除所有點餐資料。")) return;
-    try {
-      await supabase.from('sessions').update({ is_active: false }).eq('is_active', true);
-      await supabase.from('orders').delete().neq('id', '0'); 
-      
-      setConfig({ drinkShopName: '', drinkItems: [], snackShopName: '', snackItems: [], departmentMembers: [], isActive: false });
-      setOrders([]);
-      alert('已結束團購！');
-    } catch (err: any) { alert('清除失敗：' + err.message); }
+    if (!window.confirm("確定要結束嗎？")) return;
+    await supabase.from('sessions').update({ is_active: false }).eq('is_active', true);
+    await supabase.from('orders').delete().neq('id', '0');
+    window.location.reload();
   };
 
-  // 5. 處理參加者點餐 (核心修正：動態獲取數字 ID)
   const handleOrderSubmit = async (newOrder: any) => {
     try {
-      // 從雲端抓取目前正開啟的 session 的真實數字 ID
-      const { data: currentSession } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!currentSession) throw new Error("找不到目前開啟的團購單");
-
+      const { data: sessionData } = await supabase.from('sessions').select('id').eq('is_active', true).maybeSingle();
       const { error } = await supabase.from('orders').insert([{
         member_name: newOrder.memberName,
         item_name: newOrder.itemName,
         price: Number(newOrder.price),
-        notes: newOrder.notes || '',
-        session_id: currentSession.id // 這裡傳入的是數字，符合資料庫 int8 要求
+        notes: newOrder.notes,
+        session_id: sessionData?.id
       }]);
-
       if (error) throw error;
       alert('點餐成功！');
       window.location.reload(); 
-    } catch (err: any) {
-      alert('送出失敗：' + err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="flex justify-between items-center mb-12">
-          <div className="flex items-center gap-3">
-            <div className="bg-orange-500 p-2 rounded-lg text-white">
-              <IconComponents.Coffee size={24} />
-            </div>
-            <h1 className="text-xl font-bold text-orange-600">TeaTime</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleReset} className="p-2 text-gray-400 hover:text-orange-500">
-              <IconComponents.Users size={20} />
-            </button>
-            {!isParticipantLink && (
-              <div className="flex items-center gap-3 bg-white border px-3 py-1.5 rounded-full shadow-sm ml-2">
-                <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="text-sm font-medium text-gray-700 bg-transparent outline-none cursor-pointer">
-                  <option value={Role.HOST}>團購主模式</option>
-                  <option value={Role.PARTICIPANT}>參加者模式</option>
-                </select>
-              </div>
-            )}
-          </div>
-        </header>
-
-        <main>
-          {role === Role.HOST ? (
-            <div>
-              {!config.isActive ? (
-                <HostSetup onCreate={handleStartSession} />
-              ) : (
-                <div className="space-y-8">
-                  <HostDashboard orders={orders} config={config} onEndSession={handleEndSession} />
-                  <ParticipantSummary orders={orders} members={config.departmentMembers} />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              {!config.isActive ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border text-center">
-                  <IconComponents.Coffee size={40} className="text-gray-300 mb-4" />
-                  <h2 className="text-lg font-medium text-gray-800">還沒開始團購喔！</h2>
-                </div>
-              ) : (
-                <ParticipantOrder config={config} orders={orders} onSubmit={handleOrderSubmit} />
-              )}
-            </div>
-          )}
-        </main>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
+        <h1 className="text-xl font-bold text-orange-600">TeaTime</h1>
+        {!isParticipantLink && (
+          <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="border rounded-full px-3 py-1">
+            <option value={Role.HOST}>團購主模式</option>
+            <option value={Role.PARTICIPANT}>參加者模式</option>
+          </select>
+        )}
+      </header>
+      <main className="max-w-4xl mx-auto">
+        {role === Role.HOST ? (
+          !config.isActive ? <HostSetup onCreate={handleStartSession} /> : 
+          <><HostDashboard orders={orders} config={config} onEndSession={handleEndSession} /><ParticipantSummary orders={orders} members={config.departmentMembers} /></>
+        ) : (
+          !config.isActive ? <div className="text-center p-20">尚未開團</div> : 
+          <ParticipantOrder config={config} orders={orders} onSubmit={handleOrderSubmit} />
+        )}
+      </main>
     </div>
   );
 };
