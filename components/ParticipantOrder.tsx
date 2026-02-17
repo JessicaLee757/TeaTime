@@ -9,7 +9,6 @@ interface Props {
 }
 
 const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) => {
-  // 💡 修正 1：移除第一個選單選項，直接選中第一個名字
   const [userName, setUserName] = useState(config.departmentMembers[0] || '');
   const [drinkId, setDrinkId] = useState('');
   const [snackId, setSnackId] = useState('');
@@ -17,7 +16,6 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSelection, setLastSelection] = useState<string[]>([]);
 
-  // 💡 修正 2：明確判斷是否有品項，確保區塊能正常渲染
   const hasDrinks = config?.drinkItems && config.drinkItems.length > 0;
   const hasSnacks = config?.snackItems && config.snackItems.length > 0;
 
@@ -29,24 +27,22 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
     const selectedItems = [];
     const names: string[] = [];
 
-    // 處理飲料邏輯：若有點選則記錄，沒點選則記錄「不喝飲料」
     if (drinkId) {
       const drink = config.drinkItems.find(i => i.id === drinkId);
       if (drink) {
         selectedItems.push({ memberName: userName, itemName: drink.name, price: drink.price, notes: drink.sugarIceConfig || '' });
-        names.push(`飲料：${drink.name}`);
+        names.push(drink.name);
       }
     } else {
       selectedItems.push({ memberName: userName, itemName: '不喝飲料', price: 0, notes: '無' });
       names.push('不喝飲料');
     }
 
-    // 處理點心邏輯：若有點選則記錄，沒點選則記錄「不吃點心」
     if (snackId) {
       const snack = config.snackItems.find(i => i.id === snackId);
       if (snack) {
         selectedItems.push({ memberName: userName, itemName: snack.name, price: snack.price, notes: '點心' });
-        names.push(`點心：${snack.name}`);
+        names.push(snack.name);
       }
     } else {
       selectedItems.push({ memberName: userName, itemName: '不吃點心', price: 0, notes: '無' });
@@ -57,43 +53,44 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
       await Promise.all(selectedItems.map(item => onSubmit(item)));
       setLastSelection(names);
       setSubmitted(true);
-      // 💡 修正 3：移除自動跳轉與再點一份，保持成功頁面
     } catch (err) {
-      alert('點餐失敗，請稍後再試');
+      alert('點餐失敗');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl shadow-xl max-w-2xl mx-auto border border-gray-100">
+    <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-xl max-w-2xl mx-auto border border-gray-100">
       {submitted ? (
-        <div className="py-16 text-center animate-in zoom-in duration-500">
+        <div className="py-12 text-center animate-in zoom-in duration-500">
           <div className="inline-flex items-center justify-center p-6 bg-green-100 rounded-full mb-6 text-green-600">
-            <Icons.Check size={48} />
+            <Icons.Check size={40} />
           </div>
-          {/* 💡 修正 4：顯示個人姓名與選擇品項 */}
-          <h3 className="text-3xl font-black text-gray-800 mb-6">{userName} 點餐成功！</h3>
-          <div className="bg-gray-50 p-6 rounded-2xl inline-block text-left border border-gray-100">
-            <p className="text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">本次選擇：</p>
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-800 mb-6">{userName} 點餐成功！</h3>
+          <div className="bg-gray-50 p-6 rounded-2xl inline-block text-left border border-gray-100 w-full max-w-xs">
+            <p className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">本次選擇：</p>
             {lastSelection.map(name => (
-              <div key={name} className="text-lg font-bold text-gray-700 flex items-center gap-2">✨ {name}</div>
+              <div key={name} className="text-base font-bold text-gray-700 mb-1 flex items-start gap-2">
+                <span className="mt-1">✨</span> 
+                <span className="break-all">{name}</span> {/* 💡 修正 1：成功頁面文字自動換行 */}
+              </div>
             ))}
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex items-center gap-3 border-b pb-4">
-            <div className="bg-orange-100 p-2 rounded-lg text-orange-600"><Icons.Users /></div>
-            <h2 className="text-2xl font-bold text-gray-800">我要跟團</h2>
+            <div className="bg-orange-100 p-2 rounded-lg text-orange-600"><Icons.Users size={20} /></div>
+            <h2 className="text-xl font-bold text-gray-800">我要跟團</h2>
           </div>
 
           <section>
-            <label className="block text-sm font-bold text-gray-600 mb-3">名字</label>
+            <label className="block text-sm font-bold text-gray-600 mb-2">名字</label>
             <select
               value={userName}
               onChange={e => setUserName(e.target.value)}
-              className="w-full px-5 py-4 border-2 border-gray-100 rounded-2xl bg-gray-50 focus:border-orange-500 outline-none appearance-none"
+              className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl bg-gray-50 focus:border-orange-500 outline-none text-base"
             >
               {config.departmentMembers.map(m => (
                 <option key={m} value={m}>{m} {orders.some(o => (o.userName || o.memberName) === m) ? '(已點餐)' : ''}</option>
@@ -101,48 +98,47 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
             </select>
           </section>
 
-          {/* 飲料區塊 */}
-          {hasDrinks && (
-            <section className="p-5 bg-blue-50/50 rounded-3xl border border-blue-100">
-              <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
-                <Icons.Coffee /> 飲料：{config.drinkShopName}
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setDrinkId('')} className={`p-4 rounded-2xl border-2 transition-all font-bold ${!drinkId ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-blue-100 text-blue-600'}`}>不喝飲料</button>
-                {config.drinkItems.map(item => (
-                  <button key={item.id} type="button" onClick={() => setDrinkId(item.id)} className={`p-4 rounded-2xl border-2 text-left transition-all ${drinkId === item.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white border-blue-50 text-gray-700 hover:border-blue-200'}`}>
-                    <div className="font-bold truncate">{item.name}</div>
-                    <div className={`text-xs ${drinkId === item.id ? 'text-blue-100' : 'text-gray-400'}`}>${item.price}</div>
+          {/* 飲料與點心區塊 */}
+          {[
+            { id: 'drink', title: '飲料', shop: config.drinkShopName, items: config.drinkItems, current: drinkId, setter: setDrinkId, color: 'blue', icon: <Icons.Coffee size={18} /> },
+            { id: 'snack', title: '點心', shop: config.snackShopName, items: config.snackItems, current: snackId, setter: setSnackId, color: 'pink', icon: <Icons.Check size={18} /> }
+          ].map(section => (
+            section.items && section.items.length > 0 && (
+              <section key={section.id} className={`p-4 rounded-2xl border ${section.color === 'blue' ? 'bg-blue-50/50 border-blue-100' : 'bg-pink-50/50 border-pink-100'}`}>
+                <h3 className={`text-base font-bold mb-3 flex items-center gap-2 ${section.color === 'blue' ? 'text-blue-900' : 'text-pink-900'}`}>
+                  {section.icon} {section.title}：{section.shop}
+                </h3>
+                <div className="grid grid-cols-1 gap-2"> {/* 💡 修正 2：手機版建議改為一列或允許換行 */}
+                  <button 
+                    type="button" 
+                    onClick={() => section.setter('')} 
+                    className={`p-3 rounded-xl border-2 transition-all font-bold text-sm ${!section.current ? `bg-${section.color}-600 border-${section.color}-600 text-white` : `bg-white border-${section.color}-50 text-${section.color}-600`}`}
+                  >
+                    不{section.title}
                   </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* 點心區塊 */}
-          {hasSnacks && (
-            <section className="p-5 bg-pink-50/50 rounded-3xl border border-pink-100">
-              <h3 className="text-lg font-bold text-pink-900 mb-4 flex items-center gap-2">
-                <Icons.Check /> 點心：{config.snackShopName}
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setSnackId('')} className={`p-4 rounded-2xl border-2 transition-all font-bold ${!snackId ? 'bg-pink-600 border-pink-600 text-white' : 'bg-white border-pink-100 text-pink-600'}`}>不吃點心</button>
-                {config.snackItems.map(item => (
-                  <button key={item.id} type="button" onClick={() => setSnackId(item.id)} className={`p-4 rounded-2xl border-2 text-left transition-all ${snackId === item.id ? 'bg-pink-600 border-pink-600 text-white shadow-lg' : 'bg-white border-pink-50 text-gray-700 hover:border-pink-200'}`}>
-                    <div className="font-bold truncate">{item.name}</div>
-                    <div className={`text-xs ${snackId === item.id ? 'text-pink-100' : 'text-gray-400'}`}>${item.price}</div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+                  {section.items.map(item => (
+                    <button 
+                      key={item.id} 
+                      type="button" 
+                      onClick={() => section.setter(item.id)} 
+                      className={`p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? `bg-${section.color}-600 border-${section.color}-600 text-white shadow-md` : 'bg-white border-white text-gray-700 hover:border-gray-200'}`}
+                    >
+                      {/* 💡 修正 3：移除 truncate，改用 leading-tight 讓文字可換行 */}
+                      <span className="font-bold text-sm leading-tight flex-1 break-words">{item.name}</span>
+                      <span className={`text-xs flex-shrink-0 ${section.current === item.id ? 'opacity-80' : 'text-gray-400'}`}>${item.price}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )
+          ))}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-5 rounded-2xl font-black text-xl shadow-xl transition-all ${isSubmitting ? 'bg-gray-400' : 'bg-orange-600 hover:bg-orange-700 text-white'}`}
+            className={`w-full py-4 rounded-xl font-black text-lg shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-gray-300' : 'bg-orange-600 text-white'}`}
           >
-            {isSubmitting ? '正在送出...' : '確認送出訂單 🚀'}
+            {isSubmitting ? '傳送中...' : '確認送出訂單 🚀'}
           </button>
         </form>
       )}
