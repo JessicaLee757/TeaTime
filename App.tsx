@@ -21,7 +21,7 @@ const App: React.FC = () => {
     if (window.confirm("確定要重整頁面嗎？")) window.location.reload();
   };
 
-  // 1. 載入活動中的團購設定 (對應新欄位)
+  // 1. 初始化：載入進行中的團購資料
   useEffect(() => {
     if (isParticipantLink) setRole(Role.PARTICIPANT);
     const loadActiveSession = async () => {
@@ -29,20 +29,20 @@ const App: React.FC = () => {
         const { data } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle();
         if (data) {
           setConfig({
-            drinkShopName: data.shop_name || '飲料店',
-            drinkItems: data.drink_menu_data || [], // 對應新欄位
-            snackShopName: data.snack_shop_name || '點心店',
-            snackItems: data.snack_menu_data || [], // 對應新欄位
+            drinkShopName: data.shop_name,
+            drinkItems: data.drink_menu_data || [],
+            snackShopName: data.snack_shop_name,
+            snackItems: data.snack_menu_data || [],
             departmentMembers: data.members || [],
             isActive: true,
           });
         }
-      } catch (err) { console.error(err); }
+      } catch (err) { console.error("載入失敗:", err); }
     };
     loadActiveSession();
   }, [isParticipantLink]);
 
-  // 2. 載入點餐訂單
+  // 2. 載入訂單 (對應後台顯示用的欄位)
   useEffect(() => {
     const fetchOrders = async () => {
       const { data } = await supabase.from('orders').select('*');
@@ -59,66 +59,83 @@ const App: React.FC = () => {
     fetchOrders();
   }, []);
 
-  // 3. 處理團購主發起團購 (寫入分開的欄位)
+  // 3. 處理團購主發起團購
   const handleStartSession = async (newConfig: SessionConfig) => {
     try {
       const { error } = await supabase.from('sessions').insert([{
         shop_name: newConfig.drinkShopName,
         snack_shop_name: newConfig.snackShopName,
-        drink_menu_data: newConfig.drinkItems, // 飲料專用
-        snack_menu_data: newConfig.snackItems,  // 點心專用
+        drink_menu_data: newConfig.drinkItems,
+        snack_menu_data: newConfig.snackItems,
         members: newConfig.departmentMembers,
         is_active: true
       }]);
       if (error) throw error;
       setConfig({ ...newConfig, isActive: true });
-      alert('雲端分類開團成功！');
-    } catch (err: any) { alert(err.message); }
+      alert('分類開團成功！');
+    } catch (err: any) { alert('開團失敗：' + err.message); }
   };
 
+  // 4. 結束團購
   const handleEndSession = async () => {
-    if (!window.confirm("確定要結束嗎？")) return;
-    await supabase.from('sessions').update({ is_active: false }).eq('is_active', true);
-    await supabase.from('orders').delete().neq('id', '0');
-    window.location.reload();
+    if (!window.confirm("確定要結束本次團購嗎？這會清除點餐紀錄。")) return;
+    try {
+      await supabase.from('sessions').update({ is_active: false }).eq('is_active', true);
+      await supabase.from('orders').delete().neq('id', '0'); 
+      window.location.reload();
+    } catch (err: any) { alert('清除失敗：' + err.message); }
   };
 
+  // 5. 處理參加者點餐 (修正：動態抓取 bigint 型別的 ID)
   const handleOrderSubmit = async (newOrder: any) => {
     try {
       const { data: sessionData } = await supabase.from('sessions').select('id').eq('is_active', true).maybeSingle();
+      if (!sessionData) throw new Error("找不到活動中的團購");
+
       const { error } = await supabase.from('orders').insert([{
         member_name: newOrder.memberName,
         item_name: newOrder.itemName,
         price: Number(newOrder.price),
-        notes: newOrder.notes,
-        session_id: sessionData?.id
+        notes: newOrder.notes || '',
+        session_id: sessionData.id // 傳入真實 ID
       }]);
       if (error) throw error;
       alert('點餐成功！');
       window.location.reload(); 
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { alert('送出失敗：' + err.message); }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <header className="max-w-4xl mx-auto flex justify-between items-center mb-8">
-        <h1 className="text-xl font-bold text-orange-600">TeaTime</h1>
-        {!isParticipantLink && (
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="border rounded-full px-3 py-1">
-            <option value={Role.HOST}>團購主模式</option>
-            <option value={Role.PARTICIPANT}>參加者模式</option>
-          </select>
-        )}
-      </header>
-      <main className="max-w-4xl mx-auto">
-        {role === Role.HOST ? (
-          !config.isActive ? <HostSetup onCreate={handleStartSession} /> : 
-          <><HostDashboard orders={orders} config={config} onEndSession={handleEndSession} /><ParticipantSummary orders={orders} members={config.departmentMembers} /></>
-        ) : (
-          !config.isActive ? <div className="text-center p-20">尚未開團</div> : 
-          <ParticipantOrder config={config} orders={orders} onSubmit={handleOrderSubmit} />
-        )}
-      </main>
+      <div className="max-w-4xl mx-auto">
+        <header className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-3">
+            <IconComponents.Coffee size={24} className="text-orange-600" />
+            <h1 className="text-xl font-bold text-orange-600">TeaTime</h1>
+          </div>
+          {!isParticipantLink && (
+            <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="border rounded-full px-3 py-1 bg-white shadow-sm">
+              <option value={Role.HOST}>團購主模式</option>
+              <option value={Role.PARTICIPANT}>參加者模式</option>
+            </select>
+          )}
+        </header>
+
+        <main>
+          {role === Role.HOST ? (
+            !config.isActive ? <HostSetup onCreate={handleStartSession} /> : (
+              <div className="space-y-8">
+                <HostDashboard orders={orders} config={config} onEndSession={handleEndSession} />
+                <ParticipantSummary orders={orders} members={config.departmentMembers} />
+              </div>
+            )
+          ) : (
+            !config.isActive ? <div className="text-center p-20 bg-white rounded-2xl border">還沒開始團購喔！</div> : (
+              <ParticipantOrder config={config} orders={orders} onSubmit={handleOrderSubmit} />
+            )
+          )}
+        </main>
+      </div>
     </div>
   );
 };
