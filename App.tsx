@@ -150,7 +150,7 @@ const App: React.FC = () => {
           {role === Role.HOST ? (
             <div className="animate-in fade-in duration-500">
               {!config.isActive ? (
-                <HostSetup onSave={handleStartSession} />
+                <HostSetup onCreate={handleStartSession} />
               ) : (
                 <div className="space-y-8">
                   <HostDashboard orders={orders} config={config} />
