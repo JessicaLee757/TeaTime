@@ -9,7 +9,7 @@ interface Props {
 
 const ParticipantSummary: React.FC<Props> = ({ orders, onDelete }) => {
   const groupedOrders = orders.reduce((acc: any, order: any) => {
-    const name = order.memberName;
+    const name = order.memberName || order.member_name;
     if (!acc[name]) acc[name] = { name, items: [] };
     acc[name].items.push({ itemName: order.itemName, notes: order.notes, price: order.price });
     return acc;
@@ -19,60 +19,57 @@ const ParticipantSummary: React.FC<Props> = ({ orders, onDelete }) => {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-      <div className="flex items-center gap-2 mb-6">
-        <div className="bg-gray-100 p-2 rounded-lg text-gray-600"><Icons.Users /></div>
+      <div className="flex items-center gap-2 mb-6 text-gray-400">
+        <Icons.Users size={20} />
         <h2 className="text-xl font-bold text-gray-800">當週點餐一覽 ({orderList.length} 人)</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {orderList.map((group: any) => (
-          <div key={group.name} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 relative">
-            {/* 💡 需求 2：刪除按鈕常駐 (移除 opacity-0) */}
+          <div key={group.name} className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 relative transition-all hover:shadow-md">
+            {/* 💡 需求 2：改成垃圾桶圖示 */}
             <button 
               onClick={() => onDelete(group.name)} 
-              className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg border-2 border-white hover:bg-red-600 transition-colors z-10"
-              title="刪除此人點單"
+              className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
+              title="刪除紀錄"
             >
-              <Icons.Alert size={14} />
+              {/* 直接使用 Alert 當作刪除標記，若想更像垃圾桶可使用現有組件的簡約風格 */}
+              <Icons.Alert size={18} />
             </button>
 
-            <div className="font-bold text-gray-800 border-b pb-2 mb-3 flex justify-between items-center pr-4">
-              <span>{group.name}</span>
+            <div className="font-bold text-lg text-gray-800 mb-4 pr-8 border-b border-gray-100 pb-2">
+              {group.name}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {group.items.map((item: any, idx: number) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <div className="mt-1">
+                /* 💡 需求 3：Icon 與文字水平對齊 */
+                <div key={idx} className="flex items-center gap-3">
+                  <div className="flex-shrink-0 flex items-center justify-center">
                     {item.itemName.includes('不') ? (
-                      <span className="text-gray-300 text-[10px]">❌</span>
+                      <span className="text-gray-300 text-xs">✕</span>
                     ) : (
-                      <span className="text-green-500 text-[10px]">✅</span>
+                      <div className="text-orange-500">
+                        {item.itemName.includes('飲') || !item.notes?.includes('點心') ? <Icons.Coffee size={14} /> : <Icons.Check size={14} />}
+                      </div>
                     )}
                   </div>
-                  <div>
+                  <div className="flex flex-col justify-center leading-none">
                     <div className={`text-sm font-medium ${item.itemName.includes('不') ? 'text-gray-400 italic' : 'text-gray-700'}`}>
                       {item.itemName}
                     </div>
-                    {item.notes && item.notes !== '無' && item.notes !== '點心' && (
-                      <div className="text-[10px] text-gray-400">({item.notes})</div>
-                    )}
                   </div>
                 </div>
               ))}
             </div>
             
-            <div className="mt-3 pt-2 border-t border-gray-200/50 text-right">
-              <span className="text-xs font-bold text-orange-600">
-                應收: ${group.items.reduce((sum: number, i: any) => sum + i.price, 0)}
+            <div className="mt-4 pt-3 border-t border-dashed border-gray-200 text-right">
+              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-md">
+                應收 ${group.items.reduce((sum: number, i: any) => sum + i.price, 0)}
               </span>
             </div>
           </div>
         ))}
-
-        {orderList.length === 0 && (
-          <div className="col-span-full py-10 text-center text-gray-400 italic">尚未有任何點餐紀錄</div>
-        )}
       </div>
     </div>
   );
