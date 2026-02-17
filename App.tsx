@@ -10,12 +10,8 @@ import ParticipantSummary from './components/ParticipantSummary';
 const App: React.FC = () => {
   const [role, setRole] = useState<Role>(Role.HOST);
   const [config, setConfig] = useState<SessionConfig>({
-    drinkShopName: '',
-    drinkItems: [],
-    snackShopName: '',
-    snackItems: [],
-    departmentMembers: [],
-    isActive: false,
+    drinkShopName: '', drinkItems: [], snackShopName: '', snackItems: [],
+    departmentMembers: [], isActive: false,
   });
   const [orders, setOrders] = useState<OrderDetail[]>([]);
 
@@ -44,9 +40,8 @@ const App: React.FC = () => {
           setConfig({
             drinkShopName: data.shop_name || '未命名店家',
             drinkItems: data.menu_data || [],
-            snackShopName: '',
-            snackItems: [],
-            // 讀取你在 sessions 表中補齊的 members 欄位
+            snackShopName: '', 
+            snackItems: [], 
             departmentMembers: data.members || [], 
             isActive: true,
           });
@@ -58,14 +53,14 @@ const App: React.FC = () => {
     loadActiveSession();
   }, [isParticipantLink]);
 
-  // 2. 載入訂單 (確保欄位對應正確)
+  // 2. 載入訂單
   useEffect(() => {
     const fetchOrders = async () => {
       const { data } = await supabase.from('orders').select('*');
       if (data) {
         setOrders(data.map((o: any) => ({
           ...o,
-          memberName: o.member_name, // 將資料庫的下底線轉回前端用的駝峰式
+          memberName: o.member_name,
           itemName: o.item_name
         })));
       }
@@ -73,7 +68,7 @@ const App: React.FC = () => {
     fetchOrders();
   }, []);
 
-  // 3. 處理團購主發起團購：存入 sessions 表
+  // 3. 處理團購主發起團購
   const handleStartSession = async (newConfig: SessionConfig) => {
     try {
       const { error } = await supabase
@@ -81,7 +76,7 @@ const App: React.FC = () => {
         .insert([{
           shop_name: newConfig.drinkShopName,
           menu_data: newConfig.drinkItems,
-          members: newConfig.departmentMembers, // 存入名單陣列
+          members: newConfig.departmentMembers,
           is_active: true
         }]);
 
@@ -93,12 +88,11 @@ const App: React.FC = () => {
     }
   };
 
-  // 4. 處理結束團購：清除訂單與關閉 session
+  // 4. 處理結束團購
   const handleEndSession = async () => {
     if (!window.confirm("確定要結束本次團購嗎？這會清除所有點餐資料。")) return;
     try {
       await supabase.from('sessions').update({ is_active: false }).eq('is_active', true);
-      // 清除 orders 表中的所有紀錄
       await supabase.from('orders').delete().neq('id', '0'); 
       
       setConfig({ drinkShopName: '', drinkItems: [], snackShopName: '', snackItems: [], departmentMembers: [], isActive: false });
@@ -107,15 +101,24 @@ const App: React.FC = () => {
     } catch (err: any) { alert('清除失敗：' + err.message); }
   };
 
-  // 5. 處理參加者點餐：寫入 orders 表
+  // 5. 處理參加者點餐 (核心修正：動態獲取數字 ID)
   const handleOrderSubmit = async (newOrder: any) => {
     try {
+      // 從雲端抓取目前正開啟的 session 的真實數字 ID
+      const { data: currentSession } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!currentSession) throw new Error("找不到目前開啟的團購單");
+
       const { error } = await supabase.from('orders').insert([{
-        member_name: newOrder.memberName, // 這裡要對應 Supabase 的欄位名稱
-        item_name: newOrder.itemName,     // 這裡要對應 Supabase 的欄位名稱
-        price: newOrder.price,
+        member_name: newOrder.memberName,
+        item_name: newOrder.itemName,
+        price: Number(newOrder.price),
         notes: newOrder.notes || '',
-        session_id: 'active' // 標註這是當前團購的訂單
+        session_id: currentSession.id // 這裡傳入的是數字，符合資料庫 int8 要求
       }]);
 
       if (error) throw error;
@@ -165,15 +168,13 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div>
-              {/* 加入防白畫面判斷：確保有資料才渲染點餐組件 */}
-              {!config.isActive || config.drinkItems.length === 0 ? (
+              {!config.isActive ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border text-center">
                   <IconComponents.Coffee size={40} className="text-gray-300 mb-4" />
                   <h2 className="text-lg font-medium text-gray-800">還沒開始團購喔！</h2>
-                  <p className="text-gray-400 text-sm mt-1">請等待團購主發起，或嘗試重新整理。</p>
                 </div>
               ) : (
-                <ParticipantOrder config={config} onSubmit={handleOrderSubmit} />
+                <ParticipantOrder config={config} orders={orders} onSubmit={handleOrderSubmit} />
               )}
             </div>
           )}
