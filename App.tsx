@@ -21,7 +21,7 @@ const App: React.FC = () => {
     if (window.confirm("確定要重整頁面嗎？")) window.location.reload();
   };
 
-  // 1. 載入團購設定
+  // 1. 載入活動中的團購設定 (對應新欄位)
   useEffect(() => {
     if (isParticipantLink) setRole(Role.PARTICIPANT);
     const loadActiveSession = async () => {
@@ -29,11 +29,10 @@ const App: React.FC = () => {
         const { data } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle();
         if (data) {
           setConfig({
-            drinkShopName: data.shop_name,
-            drinkItems: data.menu_data || [],
-            // 💡 修正：為了讓參加者模式能顯示，這裡同步放入點心項
-            snackShopName: data.shop_name, 
-            snackItems: data.menu_data || [], 
+            drinkShopName: data.shop_name || '飲料店',
+            drinkItems: data.drink_menu_data || [], // 對應新欄位
+            snackShopName: data.snack_shop_name || '點心店',
+            snackItems: data.snack_menu_data || [], // 對應新欄位
             departmentMembers: data.members || [],
             isActive: true,
           });
@@ -43,13 +42,13 @@ const App: React.FC = () => {
     loadActiveSession();
   }, [isParticipantLink]);
 
-  // 2. 載入訂單統計
+  // 2. 載入點餐訂單
   useEffect(() => {
     const fetchOrders = async () => {
       const { data } = await supabase.from('orders').select('*');
       if (data) {
         setOrders(data.map((o: any) => ({
-          userName: o.member_name, // 💡 對齊後台統計用的 Key
+          userName: o.member_name,
           memberName: o.member_name,
           itemName: o.item_name,
           price: o.price,
@@ -60,17 +59,20 @@ const App: React.FC = () => {
     fetchOrders();
   }, []);
 
+  // 3. 處理團購主發起團購 (寫入分開的欄位)
   const handleStartSession = async (newConfig: SessionConfig) => {
     try {
       const { error } = await supabase.from('sessions').insert([{
         shop_name: newConfig.drinkShopName,
-        menu_data: newConfig.drinkItems,
+        snack_shop_name: newConfig.snackShopName,
+        drink_menu_data: newConfig.drinkItems, // 飲料專用
+        snack_menu_data: newConfig.snackItems,  // 點心專用
         members: newConfig.departmentMembers,
         is_active: true
       }]);
       if (error) throw error;
       setConfig({ ...newConfig, isActive: true });
-      alert('雲端開團成功！');
+      alert('雲端分類開團成功！');
     } catch (err: any) { alert(err.message); }
   };
 
