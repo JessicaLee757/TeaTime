@@ -89,7 +89,7 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
           </div>
 
           <section>
-            <label className="block text-sm font-bold text-gray-600 mb-3">我是誰</label>
+            <label className="block text-sm font-bold text-gray-600 mb-3">名字</label>
             <select
               value={userName}
               onChange={e => setUserName(e.target.value)}

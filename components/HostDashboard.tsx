@@ -29,11 +29,14 @@ const HostDashboard: React.FC<Props> = ({ config, orders, onEndSession }) => {
   const drinkTotal = Object.values(drinkStats).reduce<number>((acc, curr: any) => acc + (curr.total || 0), 0);
   const snackTotal = Object.values(snackStats).reduce<number>((acc, curr: any) => acc + (curr.total || 0), 0);
 
-  // 💡 複製連結功能
+  // 💡 邏輯：找出尚未點餐的人
+  const orderedNames = new Set(orders.map(o => o.userName || o.memberName));
+  const missingMembers = (config.departmentMembers || []).filter(m => !orderedNames.has(m));
+
   const copyLink = () => {
     const link = `https://tea-time-u72l.vercel.app/?mode=participant`;
     navigator.clipboard.writeText(link);
-    alert('跟團連結已複製！可直接傳給同事。');
+    alert('跟團連結已複製！');
   };
 
   return (
@@ -41,31 +44,47 @@ const HostDashboard: React.FC<Props> = ({ config, orders, onEndSession }) => {
       <div className="bg-white p-6 rounded-2xl shadow-sm border flex justify-between items-center">
         <h2 className="text-xl font-bold">團購後台管理</h2>
         <div className="flex gap-2">
-          {/* 💡 需求 1：複製連結按鈕 */}
-          <button onClick={copyLink} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold">複製跟團連結</button>
-          <button onClick={onEndSession} className="text-red-500 border border-red-200 px-4 py-2 rounded-lg">結束團購</button>
+          <button onClick={copyLink} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm">複製跟團連結</button>
+          <button onClick={onEndSession} className="text-red-500 border border-red-200 px-4 py-2 rounded-lg text-sm">結束團購</button>
         </div>
       </div>
-      {/* ...其餘統計區塊保持不變... */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
-          <h3 className="font-bold text-blue-600 mb-4">飲料：{config.drinkShopName}</h3>
+          <h3 className="font-bold text-blue-600 mb-4 flex items-center gap-2"><Icons.Coffee /> 飲料：{config.drinkShopName}</h3>
           {Object.keys(drinkStats).map(name => (
-            <div key={name} className="flex justify-between text-sm border-b pb-1"><span>{name}</span><span>x {drinkStats[name].count} (${drinkStats[name].total})</span></div>
+            <div key={name} className="flex justify-between text-sm border-b pb-1 mb-1"><span>{name}</span><span className="font-bold">x {drinkStats[name].count} (${drinkStats[name].total})</span></div>
           ))}
           <div className="pt-2 font-bold text-blue-700 flex justify-between"><span>小計</span><span>${drinkTotal}</span></div>
         </div>
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
-          <h3 className="font-bold text-pink-600 mb-4">點心：{config.snackShopName}</h3>
+          <h3 className="font-bold text-pink-600 mb-4 flex items-center gap-2"><Icons.Check /> 點心：{config.snackShopName}</h3>
           {Object.keys(snackStats).map(name => (
-            <div key={name} className="flex justify-between text-sm border-b pb-1"><span>{name}</span><span>x {snackStats[name].count} (${snackStats[name].total})</span></div>
+            <div key={name} className="flex justify-between text-sm border-b pb-1 mb-1"><span>{name}</span><span className="font-bold">x {snackStats[name].count} (${snackStats[name].total})</span></div>
           ))}
           <div className="pt-2 font-bold text-pink-700 flex justify-between"><span>小計</span><span>${snackTotal}</span></div>
         </div>
       </div>
-      <div className="bg-white p-6 rounded-2xl border-2 border-orange-500 flex justify-between items-center shadow-lg">
-        <h3 className="text-2xl font-black text-gray-800">全團總計</h3>
-        <span className="text-4xl font-black text-orange-600">${drinkTotal + snackTotal}</span>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 bg-white p-6 rounded-2xl border-2 border-orange-500 flex justify-between items-center shadow-lg">
+          <h3 className="text-2xl font-black text-gray-800">全團總計</h3>
+          <span className="text-4xl font-black text-orange-600">${drinkTotal + snackTotal}</span>
+        </div>
+        
+        {/* 💡 需求 1：誰還沒點餐 */}
+        <div className="bg-gray-800 p-6 rounded-2xl text-white shadow-lg">
+          <h3 className="text-sm font-bold text-gray-400 mb-2 uppercase tracking-widest">尚未點餐 ({missingMembers.length})</h3>
+          <div className="flex flex-wrap gap-2">
+            {missingMembers.length > 0 ? (
+              missingMembers.map(m => (
+                <span key={m} className="px-2 py-1 bg-gray-700 rounded text-xs">{m}</span>
+              ))
+            ) : (
+              <span className="text-green-400 font-bold">🎉 全員到齊！</span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
