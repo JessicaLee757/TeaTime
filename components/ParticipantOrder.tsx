@@ -16,9 +16,6 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSelection, setLastSelection] = useState<string[]>([]);
 
-  const hasDrinks = config?.drinkItems && config.drinkItems.length > 0;
-  const hasSnacks = config?.snackItems && config.snackItems.length > 0;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userName) return alert('請選擇姓名');
@@ -86,11 +83,12 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
           </div>
 
           <section>
+            {/* 💡 修正點：改為「名字」 */}
             <label className="block text-sm font-bold text-gray-600 mb-2">名字</label>
             <select
               value={userName}
               onChange={e => setUserName(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl bg-gray-50 focus:border-orange-500 outline-none text-base"
+              className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl bg-gray-50 focus:border-orange-500 outline-none text-base transition-colors"
             >
               {config.departmentMembers.map(m => (
                 <option key={m} value={m}>{m} {orders.some(o => (o.userName || o.memberName) === m) ? '(已點餐)' : ''}</option>
@@ -98,37 +96,41 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
             </select>
           </section>
 
-          {/* 渲染飲料與點心區塊 */}
+          {/* 其餘部分保持不變... */}
           {[
             { id: 'drink', title: '飲料', shop: config.drinkShopName, items: config.drinkItems, current: drinkId, setter: setDrinkId, color: 'blue', icon: <Icons.Coffee size={18} />, noneText: '不喝飲料' },
             { id: 'snack', title: '點心', shop: config.snackShopName, items: config.snackItems, current: snackId, setter: setSnackId, color: 'pink', icon: <Icons.Check size={18} />, noneText: '不吃點心' }
           ].map(section => (
-            section.items && section.items.length > 0 && (
-              <section key={section.id} className={`p-4 rounded-2xl border ${section.color === 'blue' ? 'bg-blue-50/50 border-blue-100' : 'bg-pink-50/50 border-pink-100'}`}>
+            section.items && (
+              <section key={section.id} className={`p-4 rounded-2xl border ${section.color === 'blue' ? 'bg-blue-50/30 border-blue-100' : 'bg-pink-50/30 border-pink-100'}`}>
                 <h3 className={`text-base font-bold mb-3 flex items-center gap-2 ${section.color === 'blue' ? 'text-blue-900' : 'text-pink-900'}`}>
                   {section.icon} {section.title}：{section.shop}
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
-                  {/* 💡 修正：統一「不喝/不吃」選項的樣式與對齊方式 */}
                   <button 
                     type="button" 
                     onClick={() => section.setter('')} 
-                    className={`p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${!section.current ? (section.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-pink-600 border-pink-600 text-white shadow-md') : 'bg-white border-white text-gray-700 hover:border-gray-200'}`}
+                    className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${!section.current ? (section.color === 'blue' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-pink-500 bg-white ring-1 ring-pink-500') : 'bg-white border-white text-gray-500'}`}
                   >
-                    <span className="font-bold text-sm leading-tight flex-1">{section.noneText}</span>
-                    <span className={`text-xs flex-shrink-0 ${!section.current ? 'opacity-80' : 'text-gray-400'}`}>$0</span>
+                    <span className={`font-bold text-sm ${!section.current ? (section.color === 'blue' ? 'text-blue-700' : 'text-pink-700') : ''}`}>{section.noneText}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs opacity-50">$0</span>
+                      {!section.current && <span className={section.color === 'blue' ? 'text-blue-500' : 'text-pink-500'}><Icons.Check size={16} /></span>}
+                    </div>
                   </button>
 
-                  {/* 品項清單 */}
                   {section.items.map(item => (
                     <button 
                       key={item.id} 
                       type="button" 
                       onClick={() => section.setter(item.id)} 
-                      className={`p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? (section.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-pink-600 border-pink-600 text-white shadow-md') : 'bg-white border-white text-gray-700 hover:border-gray-200'}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? (section.color === 'blue' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-pink-500 bg-white ring-1 ring-pink-500') : 'bg-white border-white text-gray-700'}`}
                     >
-                      <span className="font-bold text-sm leading-tight flex-1 break-words">{item.name}</span>
-                      <span className={`text-xs flex-shrink-0 ${section.current === item.id ? 'opacity-80' : 'text-gray-400'}`}>${item.price}</span>
+                      <span className={`font-bold text-sm break-words flex-1 ${section.current === item.id ? (section.color === 'blue' ? 'text-blue-700' : 'text-pink-700') : ''}`}>{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs opacity-50">${item.price}</span>
+                        {section.current === item.id && <span className={section.color === 'blue' ? 'text-blue-500' : 'text-pink-500'}><Icons.Check size={16} /></span>}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -139,7 +141,7 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-4 rounded-xl font-black text-lg shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-gray-300' : 'bg-orange-600 text-white'}`}
+            className={`w-full py-4 rounded-xl font-black text-lg shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-gray-300' : 'bg-orange-600 text-white shadow-orange-100 hover:bg-orange-700'}`}
           >
             {isSubmitting ? '傳送中...' : '確認送出訂單 🚀'}
           </button>
