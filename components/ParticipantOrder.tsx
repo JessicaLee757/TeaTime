@@ -73,7 +73,7 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
             {lastSelection.map(name => (
               <div key={name} className="text-base font-bold text-gray-700 mb-1 flex items-start gap-2">
                 <span className="mt-1">✨</span> 
-                <span className="break-all">{name}</span> {/* 💡 修正 1：成功頁面文字自動換行 */}
+                <span className="break-all">{name}</span>
               </div>
             ))}
           </div>
@@ -98,32 +98,35 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
             </select>
           </section>
 
-          {/* 飲料與點心區塊 */}
+          {/* 渲染飲料與點心區塊 */}
           {[
-            { id: 'drink', title: '飲料', shop: config.drinkShopName, items: config.drinkItems, current: drinkId, setter: setDrinkId, color: 'blue', icon: <Icons.Coffee size={18} /> },
-            { id: 'snack', title: '點心', shop: config.snackShopName, items: config.snackItems, current: snackId, setter: setSnackId, color: 'pink', icon: <Icons.Check size={18} /> }
+            { id: 'drink', title: '飲料', shop: config.drinkShopName, items: config.drinkItems, current: drinkId, setter: setDrinkId, color: 'blue', icon: <Icons.Coffee size={18} />, noneText: '不喝飲料' },
+            { id: 'snack', title: '點心', shop: config.snackShopName, items: config.snackItems, current: snackId, setter: setSnackId, color: 'pink', icon: <Icons.Check size={18} />, noneText: '不吃點心' }
           ].map(section => (
             section.items && section.items.length > 0 && (
               <section key={section.id} className={`p-4 rounded-2xl border ${section.color === 'blue' ? 'bg-blue-50/50 border-blue-100' : 'bg-pink-50/50 border-pink-100'}`}>
                 <h3 className={`text-base font-bold mb-3 flex items-center gap-2 ${section.color === 'blue' ? 'text-blue-900' : 'text-pink-900'}`}>
                   {section.icon} {section.title}：{section.shop}
                 </h3>
-                <div className="grid grid-cols-1 gap-2"> {/* 💡 修正 2：手機版建議改為一列或允許換行 */}
+                <div className="grid grid-cols-1 gap-2">
+                  {/* 💡 修正：統一「不喝/不吃」選項的樣式與對齊方式 */}
                   <button 
                     type="button" 
                     onClick={() => section.setter('')} 
-                    className={`p-3 rounded-xl border-2 transition-all font-bold text-sm ${!section.current ? `bg-${section.color}-600 border-${section.color}-600 text-white` : `bg-white border-${section.color}-50 text-${section.color}-600`}`}
+                    className={`p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${!section.current ? (section.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-pink-600 border-pink-600 text-white shadow-md') : 'bg-white border-white text-gray-700 hover:border-gray-200'}`}
                   >
-                    不{section.title}
+                    <span className="font-bold text-sm leading-tight flex-1">{section.noneText}</span>
+                    <span className={`text-xs flex-shrink-0 ${!section.current ? 'opacity-80' : 'text-gray-400'}`}>$0</span>
                   </button>
+
+                  {/* 品項清單 */}
                   {section.items.map(item => (
                     <button 
                       key={item.id} 
                       type="button" 
                       onClick={() => section.setter(item.id)} 
-                      className={`p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? `bg-${section.color}-600 border-${section.color}-600 text-white shadow-md` : 'bg-white border-white text-gray-700 hover:border-gray-200'}`}
+                      className={`p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? (section.color === 'blue' ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-pink-600 border-pink-600 text-white shadow-md') : 'bg-white border-white text-gray-700 hover:border-gray-200'}`}
                     >
-                      {/* 💡 修正 3：移除 truncate，改用 leading-tight 讓文字可換行 */}
                       <span className="font-bold text-sm leading-tight flex-1 break-words">{item.name}</span>
                       <span className={`text-xs flex-shrink-0 ${section.current === item.id ? 'opacity-80' : 'text-gray-400'}`}>${item.price}</span>
                     </button>
