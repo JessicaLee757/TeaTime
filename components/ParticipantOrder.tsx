@@ -24,6 +24,7 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
     const selectedItems = [];
     const names: string[] = [];
 
+    // 處理飲料邏輯
     if (drinkId) {
       const drink = config.drinkItems.find(i => i.id === drinkId);
       if (drink) {
@@ -35,6 +36,7 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
       names.push('不喝飲料');
     }
 
+    // 處理點心邏輯
     if (snackId) {
       const snack = config.snackItems.find(i => i.id === snackId);
       if (snack) {
@@ -83,12 +85,11 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
           </div>
 
           <section>
-            {/* 💡 修正點：改為「名字」 */}
             <label className="block text-sm font-bold text-gray-600 mb-2">名字</label>
             <select
               value={userName}
               onChange={e => setUserName(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl bg-gray-50 focus:border-orange-500 outline-none text-base transition-colors"
+              className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl bg-gray-50 focus:border-orange-500 outline-none text-base transition-colors appearance-none"
             >
               {config.departmentMembers.map(m => (
                 <option key={m} value={m}>{m} {orders.some(o => (o.userName || o.memberName) === m) ? '(已點餐)' : ''}</option>
@@ -96,7 +97,7 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
             </select>
           </section>
 
-          {/* 其餘部分保持不變... */}
+          {/* 渲染飲料與點心區塊 */}
           {[
             { id: 'drink', title: '飲料', shop: config.drinkShopName, items: config.drinkItems, current: drinkId, setter: setDrinkId, color: 'blue', icon: <Icons.Coffee size={18} />, noneText: '不喝飲料' },
             { id: 'snack', title: '點心', shop: config.snackShopName, items: config.snackItems, current: snackId, setter: setSnackId, color: 'pink', icon: <Icons.Check size={18} />, noneText: '不吃點心' }
@@ -110,13 +111,11 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
                   <button 
                     type="button" 
                     onClick={() => section.setter('')} 
-                    className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${!section.current ? (section.color === 'blue' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-pink-500 bg-white ring-1 ring-pink-500') : 'bg-white border-white text-gray-500'}`}
+                    className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${!section.current ? (section.color === 'blue' ? 'border-blue-500 bg-white ring-1 ring-blue-500 shadow-sm' : 'border-pink-500 bg-white ring-1 ring-pink-500 shadow-sm') : 'bg-white border-white text-gray-500 hover:border-gray-100'}`}
                   >
+                    {/* 💡 修正：不顯示價格標籤 */}
                     <span className={`font-bold text-sm ${!section.current ? (section.color === 'blue' ? 'text-blue-700' : 'text-pink-700') : ''}`}>{section.noneText}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs opacity-50">$0</span>
-                      {!section.current && <span className={section.color === 'blue' ? 'text-blue-500' : 'text-pink-500'}><Icons.Check size={16} /></span>}
-                    </div>
+                    {!section.current && <span className={section.color === 'blue' ? 'text-blue-500' : 'text-pink-500'}><Icons.Check size={18} /></span>}
                   </button>
 
                   {section.items.map(item => (
@@ -124,13 +123,11 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
                       key={item.id} 
                       type="button" 
                       onClick={() => section.setter(item.id)} 
-                      className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? (section.color === 'blue' ? 'border-blue-500 bg-white ring-1 ring-blue-500' : 'border-pink-500 bg-white ring-1 ring-pink-500') : 'bg-white border-white text-gray-700'}`}
+                      className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center gap-2 ${section.current === item.id ? (section.color === 'blue' ? 'border-blue-500 bg-white ring-1 ring-blue-500 shadow-sm' : 'border-pink-500 bg-white ring-1 ring-pink-500 shadow-sm') : 'bg-white border-white text-gray-700 hover:border-gray-100'}`}
                     >
+                      {/* 💡 修正：不顯示價格標籤 */}
                       <span className={`font-bold text-sm break-words flex-1 ${section.current === item.id ? (section.color === 'blue' ? 'text-blue-700' : 'text-pink-700') : ''}`}>{item.name}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs opacity-50">${item.price}</span>
-                        {section.current === item.id && <span className={section.color === 'blue' ? 'text-blue-500' : 'text-pink-500'}><Icons.Check size={16} /></span>}
-                      </div>
+                      {section.current === item.id && <span className={section.color === 'blue' ? 'text-blue-500' : 'text-pink-500'}><Icons.Check size={18} /></span>}
                     </button>
                   ))}
                 </div>
@@ -141,9 +138,9 @@ const ParticipantOrder: React.FC<Props> = ({ config, orders = [], onSubmit }) =>
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-4 rounded-xl font-black text-lg shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-gray-300' : 'bg-orange-600 text-white shadow-orange-100 hover:bg-orange-700'}`}
+            className={`w-full py-4 rounded-xl font-black text-lg shadow-lg transition-all active:scale-[0.98] ${isSubmitting ? 'bg-gray-300 text-gray-500' : 'bg-orange-600 text-white shadow-orange-100 hover:bg-orange-700'}`}
           >
-            {isSubmitting ? '傳送中...' : '確認送出訂單 🚀'}
+            {isSubmitting ? '正在送出...' : '確認送出訂單 🚀'}
           </button>
         </form>
       )}
